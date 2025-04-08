@@ -26,7 +26,7 @@ python -m spacy download en_core_web_sm
 `
 
 
-## create folder "static" and "resumes"   ./static/resumes
+## create folder "static" and "resumes"  to get  static/resumes
 
 
 
