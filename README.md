@@ -2,7 +2,7 @@
 
 
 
-python -m venv env 
+### python -m venv env 
 
 
 .\env\Scripts\activate
@@ -13,8 +13,9 @@ pip install fastapi uvicorn python-multipart psycopg2 nltk PyPDF2 python-docx se
 python -m spacy download en_core_web_sm
 
 
-create file db.json with the format:
+## create file db.json with the format:
 
+`
 {
     "dbname": "dbname",  
     "user": "user",         
@@ -22,9 +23,10 @@ create file db.json with the format:
     "host": "localhost",             
     "port": "5432"                   
 }
+`
 
 
-
+## create folder "static" and "resumes"   ./static/resumes
 
 
 
