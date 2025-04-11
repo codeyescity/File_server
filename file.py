@@ -159,14 +159,12 @@ async def upload_resumes_hr(job_offer_id: int, files: List[UploadFile] = File(..
     return {"urls": urls}
 
 
-
 @app.get("/recommendation/{job_offer_id}")
 async def get_recommendation(job_offer_id: int = 1):
 
     RESUMES_PATH = "static/resumes"
     # Read inputs
     #job_description = read_text_file('job_offer.txt')
-    job_description = "programming software "
     job_description = get_joboffer(db, job_offer_id)
     keywords = get_keywords(db, job_offer_id)
     
@@ -179,16 +177,15 @@ async def get_recommendation(job_offer_id: int = 1):
         for filename in os.listdir( RESUMES_PATH + '/' + str(dir)):
 
             filename = RESUMES_PATH + '/' + str(dir) + "/" + filename
-            print(filename)
             if filename.endswith(('.pdf', '.docx')):
                 file_path = filename
-                chunks, full_text = process_resume(file_path)
-                
-                if not chunks:
-                    continue
+                chunks, full_text = process_resume(model ,file_path)
+                # if not chunks:
+                #     continue
                 
                 # Semantic similarity score
-                chunk_embeddings = model.encode(chunks, convert_to_tensor=True)
+                # chunk_embeddings = model.encode(chunks, convert_to_tensor=True)
+                chunk_embeddings = chunks
                 similarities = util.cos_sim(job_embedding, chunk_embeddings)[0]
                 semantic_score = max(similarities).item()
                 

@@ -95,7 +95,76 @@ def read_docx(file_path):
     doc = Document(file_path)
     return "\n".join([para.text for para in doc.paragraphs])
 
-def process_resume(file_path):
+# def process_resume(model, file_path):
+#     if file_path.endswith('.pdf'):
+#         text = read_pdf(file_path)
+#     elif file_path.endswith('.docx'):
+#         text = read_docx(file_path)
+#     else:
+#         return [], ""
+    
+#     # Clean text
+#     text = re.sub(r'\s+', ' ', text).strip().lower()
+#     full_text = text
+#     #words = word_tokenize(text)
+#     words = model.encode(text, convert_to_tensor=True)
+    
+#     # Split into chunks if needed
+#     chunks = []
+#     if len(words) > 200:
+#         for i in range(0, len(words), 200):
+#             chunk = ' '.join(words[i:i+200])
+#             chunks.append(chunk)
+#     else:
+#         chunks.append(' '.join(words))
+    
+#     return chunks, full_text
+
+
+# def process_resume(model , file_path):
+#     if file_path.endswith('.pdf'):
+#         text = read_pdf(file_path)
+#     elif file_path.endswith('.docx'):
+#         text = read_docx(file_path)
+#     else:
+#         return [], ""
+    
+#     # Clean text
+#     text = re.sub(r'\s+', ' ', text).strip().lower()
+#     full_text = text
+    
+#     # Split into sentences or meaningful chunks (better for sentence transformers)
+#     sentences = [text]
+    
+#     # Alternatively, you could use sentence splitting:
+#     # from nltk.tokenize import sent_tokenize
+#     # sentences = sent_tokenize(text)
+    
+#     # Split into chunks if needed (better to split by sentences than arbitrary word counts)
+#     chunks = []
+#     current_chunk = []
+#     current_length = 0
+    
+#     for sentence in sentences:
+#         sentence_length = len(sentence.split())
+#         if current_length + sentence_length > 200 and current_chunk:
+#             chunks.append(' '.join(current_chunk))
+#             current_chunk = []
+#             current_length = 0
+#         current_chunk.append(sentence)
+#         current_length += sentence_length
+    
+#     if current_chunk:
+#         chunks.append(' '.join(current_chunk))
+    
+#     # Generate embeddings for each chunk
+#     chunk_embeddings = model.encode(chunks)
+    
+#     return chunk_embeddings, full_text
+
+
+
+def process_resume(model, file_path):
     if file_path.endswith('.pdf'):
         text = read_pdf(file_path)
     elif file_path.endswith('.docx'):
@@ -106,18 +175,18 @@ def process_resume(file_path):
     # Clean text
     text = re.sub(r'\s+', ' ', text).strip().lower()
     full_text = text
-    words = word_tokenize(text)
+    words = text.split()  # Simple whitespace tokenization
     
-    # Split into chunks if needed
+    # Split into chunks
     chunks = []
-    if len(words) > 200:
-        for i in range(0, len(words), 200):
-            chunk = ' '.join(words[i:i+200])
-            chunks.append(chunk)
-    else:
-        chunks.append(' '.join(words))
+    for i in range(0, len(words), 200):
+        chunk = ' '.join(words[i:i+200])
+        chunks.append(chunk)
     
-    return chunks, full_text
+    # Generate embeddings for each chunk
+    chunk_embeddings = model.encode(chunks)
+    
+    return chunk_embeddings, full_text
 
 def calculate_keyword_score(text, keywords):
     text = text.lower()
