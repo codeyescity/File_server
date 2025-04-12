@@ -2,7 +2,7 @@ import json
 
 import os
 import re
-from nltk.tokenize import word_tokenize
+# from nltk.tokenize import word_tokenize
 from PyPDF2 import PdfReader
 from docx import Document
 
@@ -61,6 +61,22 @@ def get_joboffer(db: PostgreSQLWrapper, jobOfferId ):
     print(res[2])
 
     return res[2]
+
+
+def get_resumes(db: PostgreSQLWrapper, jobOfferId):
+
+
+    select_resumes_query = """
+    SELECT  "cvId"
+    FROM public."User"
+    LEFT JOIN public."JobApplication" ON  "User"."UserId" = "JobApplication"."userId"
+    WHERE "User"."role" = 'user'
+    AND "JobApplication"."jobOfferId" = %s
+    """
+
+    res = db.fetch_all(select_resumes_query, (jobOfferId,))
+
+    return res
 
 def read_formated_file(file_path):
 
