@@ -5,6 +5,8 @@ from pathlib import Path
 import uuid
 from datetime import datetime
 
+import hashlib
+
 import os
 from sentence_transformers import SentenceTransformer, util
 
@@ -14,7 +16,7 @@ import spacy
 from datetime import datetime
 
 from helper import read_dict_from_json
-from helper import get_keywords, get_joboffer,insert_resumes_db, read_formated_file, extract_contact_info, get_resumes
+from helper import get_keywords, get_joboffer,insert_resumes_db, file_hash_esxist ,read_formated_file, extract_contact_info, get_resumes
 from helper import process_resume, calculate_keyword_score
 from name import extract_names
 
@@ -63,9 +65,15 @@ async def upload_resume(job_offer_id: int, file: UploadFile = File(...)):
     # Create directory and save file
     dir_path.mkdir(parents=True, exist_ok=True)
     file_path = dir_path / file.filename
+
+    sha256_hash = ""
     
     try:
         contents = await file.read()
+        sha256_hash = hashlib.sha256(contents).hexdigest()
+
+        if file_hash_esxist(db, sha256_hash, job_offer_id):
+            raise HTTPException(500, f"Error saving file: {str(e)}")
 
         with open(file_path, "wb") as f:
             f.write(contents)
@@ -88,7 +96,7 @@ async def upload_resume(job_offer_id: int, file: UploadFile = File(...)):
         # print(emails)
         # print(name)
 
-        insert_resumes_db(db, resume_id, resume_url , phone_numbers, emails, name, job_offer_id)
+        insert_resumes_db(db, resume_id, resume_url ,sha256_hash , phone_numbers, emails, name, job_offer_id)
 
         # rows = db.fetch_all("""SELECT * FROM "User" """)
         # for row in rows:
@@ -126,11 +134,24 @@ async def upload_resumes_hr(job_offer_id: int, files: List[UploadFile] = File(..
         unique_id = uuid.uuid4().hex
         dir_path = Path(f"static/resumes/{year}-{unique_id}")
     
-        dir_path.mkdir(parents=True, exist_ok=True)
-        file_path = dir_path / file.filename
+
+        sha256_hash = ""
 
         try:
+
+
             contents = await file.read()
+            sha256_hash = hashlib.sha256(contents).hexdigest()
+
+
+            if file_hash_esxist(db, sha256_hash, job_offer_id):
+                print("file ", file , "is duplicated")
+                continue
+
+            dir_path.mkdir(parents=True, exist_ok=True)
+            file_path = dir_path / file.filename
+
+
             with open(file_path, "wb") as f:
                 f.write(contents)
             urls.append(f"{SERVER_URL}/static/resumes/{year}-{unique_id}/{file.filename}")
@@ -147,7 +168,8 @@ async def upload_resumes_hr(job_offer_id: int, files: List[UploadFile] = File(..
                 emails = contact_info["emails"]
                 name = extract_names(nlp_model, resume_txt)
 
-                insert_resumes_db(db, resume_id, resume_url , phone_numbers, emails, name, job_offer_id)
+                insert_resumes_db(db, resume_id, resume_url , sha256_hash, phone_numbers, emails, name, job_offer_id)
+                print("saved :", resume_url)
 
                 
             except Exception as e:

@@ -243,7 +243,7 @@ def extract_contact_info(text):
         'emails': emails
     }
 
-def insert_resumes_db(db: PostgreSQLWrapper, cvId, cvUrl, phone_numbers, emails, name, jobOfferId=None):
+def insert_resumes_db(db: PostgreSQLWrapper, cvId, cvUrl, sha256_hash, phone_numbers, emails, name, jobOfferId=None):
 
     email = ""
     phoneNumber = ""
@@ -264,9 +264,10 @@ def insert_resumes_db(db: PostgreSQLWrapper, cvId, cvUrl, phone_numbers, emails,
         "phoneNumber", 
         "role", 
         "cvId",
-        "cvUrl"
+        "cvUrl",
+        "cvhash"
     ) VALUES (
-        %s, %s, %s, %s, %s, %s
+        %s, %s, %s, %s, %s, %s, %s
     ) RETURNING "UserId";
     """
     result = db.execute_query(insert_user_query, (
@@ -275,7 +276,8 @@ def insert_resumes_db(db: PostgreSQLWrapper, cvId, cvUrl, phone_numbers, emails,
             phoneNumber,
             "user",
             cvId,
-            cvUrl
+            cvUrl,
+            sha256_hash
     ))
 
     user_id = result[0]
@@ -304,6 +306,26 @@ def insert_resumes_db(db: PostgreSQLWrapper, cvId, cvUrl, phone_numbers, emails,
 
 
 
+
+def file_hash_esxist(db: PostgreSQLWrapper, file_hash, jobOfferId) -> bool:
+
+
+    select_file_hash_query = """
+    SELECT  "cvhash"
+    FROM public."User"
+    LEFT JOIN public."JobApplication" ON  "User"."UserId" = "JobApplication"."userId"
+    WHERE "User"."role" = 'user'
+    AND "User"."cvhash" = %s
+    AND "JobApplication"."jobOfferId" = %s
+    """
+
+    res = db.fetch_all(select_file_hash_query, (file_hash, jobOfferId))
+
+    for row in res:
+        if file_hash == row[0]:
+            return True
+
+    return False
 
 
 
