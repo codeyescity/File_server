@@ -246,6 +246,28 @@ async def get_recommendation(job_offer_id: int):
     return ranked_resumes
 
 
+
+@app.post("/grading")
+async def calculate_semantic_similarity(str1: str, str2: str):
+    # Encode the sentences
+    embeddings = model.encode([str1, str2], convert_to_tensor=True)
+    
+    # Calculate semantic similarity
+    similarity_score = util.pytorch_cos_sim(embeddings[0], embeddings[1]).item()
+    
+    # Scale to 1-10
+    # scaled_score = scale_to_1_10(similarity_score)
+    
+    return {
+        # "text1": str1,
+        # "text2": str2,
+        # "similarity_score": similarity_score,
+        "cosine_similarity": float(similarity_score)
+    }
+
+
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)
