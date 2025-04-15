@@ -248,9 +248,9 @@ async def get_recommendation(job_offer_id: int):
 
 
 @app.post("/grading")
-async def calculate_semantic_similarity(str1: str, str2: str):
+async def calculate_semantic_similarity(user_answer: str, correct_answer: str):
     # Encode the sentences
-    embeddings = model.encode([str1, str2], convert_to_tensor=True)
+    embeddings = model.encode([user_answer, correct_answer], convert_to_tensor=True)
     
     # Calculate semantic similarity
     similarity_score = util.pytorch_cos_sim(embeddings[0], embeddings[1]).item()
