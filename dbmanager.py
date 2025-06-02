@@ -29,6 +29,20 @@ class PostgreSQLWrapper:
             self.connection.rollback()
             raise e
 
+    def delete_query(self, query, params=None):
+        try:
+            # if return_id:
+            #     if not query.strip().upper().endswith("RETURNING ID"):
+            #         query += " RETURNING id"
+            self.cursor.execute(query, params)
+            self.connection.commit()
+            # if return_id:
+            #     result = self.cursor.fetchone()
+            #     return result['id'] if result else None
+        except Exception as e:
+            self.connection.rollback()
+            raise e
+        
     def fetch_all(self, query, params=None):
         self.cursor.execute(query, params)
         return self.cursor.fetchall()

@@ -221,8 +221,10 @@ def extract_contact_info(text):
     
     # Regular expression for email addresses
     email_regex = re.compile(
-        r'\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b'
+        r'\b[A-Za-z0-9][A-Za-z0-9_.%+-]{0,63}@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b'
     )
+
+
     
     # Find matches and deduplicate
     phone_numbers = list(set(phone_regex.findall(text)))
@@ -326,6 +328,3 @@ def file_hash_esxist(db: PostgreSQLWrapper, file_hash, jobOfferId) -> bool:
             return True
 
     return False
-
-
-

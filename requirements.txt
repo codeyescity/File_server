@@ -9,5 +9,3 @@ PyPDF2
 python-docx 
 sentence-transformers 
 spacy
-
-

@@ -266,6 +266,39 @@ async def calculate_semantic_similarity(user_answer: str, correct_answer: str):
     }
 
 
+@app.delete("/delete-resume/", status_code =204)
+async def delete_resume(job_offer_id: int, resume_id: str):
+
+
+    select_query = """
+    SELECT "UserId"
+    FROM "User"
+    WHERE "cvId" = %s
+    """
+    UserId = db.fetch_one(select_query, (resume_id,))
+
+    print(UserId)
+    if not UserId:
+        raise HTTPException(status_code=404,detail=f"resume with id {resume_id} was not found")
+    
+    print(UserId[0])
+
+
+    delete_jobapplication_query = """
+    DELETE FROM "JobApplication"  
+    WHERE "userId" = %s
+    AND "jobOfferId" = %s
+    """
+
+    db.delete_query(delete_jobapplication_query, (UserId[0],job_offer_id))
+
+    
+    delete_resume_query = """
+    DELETE FROM "User" WHERE "cvId" = %s
+    """
+    db.delete_query(delete_resume_query, (resume_id,))
+
+
 
 
 if __name__ == "__main__":
