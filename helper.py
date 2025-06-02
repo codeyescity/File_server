@@ -101,11 +101,22 @@ def read_text_file(file_path):
         return file.read()
 
 def read_pdf(file_path):
-    text = ""
-    reader = PdfReader(file_path)
-    for page in reader.pages:
-        text += page.extract_text()
-    return text
+    # text = ""
+    # reader = PdfReader(file_path)
+    # for page in reader.pages:
+    #     text += page.extract_text()
+    # return text
+
+    import pdfplumber
+
+    with pdfplumber.open(file_path) as pdf:
+        # Extract all text from the PDF
+        all_text = ""
+        for page in pdf.pages:
+            all_text += page.extract_text()
+        
+        print(all_text)
+        return all_text
 
 def read_docx(file_path):
     doc = Document(file_path)
