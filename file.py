@@ -38,6 +38,9 @@ SERVER_URL = "http://localhost:8000"
 SEMANTIC_WEIGHT = 0.7 
 KEYWORD_WEIGHT = 0.3
 
+LOADED_EMBEDDINGS_MODEL = False
+LOADED_NLP_MODEL = False
+
 model = SentenceTransformer('all-MiniLM-L6-v2')
 nlp_model = spacy.load("en_core_web_trf")
 
@@ -138,11 +141,8 @@ async def upload_resumes_hr(job_offer_id: int, files: List[UploadFile] = File(..
         sha256_hash = ""
 
         try:
-
-
             contents = await file.read()
             sha256_hash = hashlib.sha256(contents).hexdigest()
-
 
             if file_hash_esxist(db, sha256_hash, job_offer_id):
                 print("file ", file , "is duplicated")
@@ -169,6 +169,8 @@ async def upload_resumes_hr(job_offer_id: int, files: List[UploadFile] = File(..
                 name = extract_names(nlp_model, resume_txt)
 
                 insert_resumes_db(db, resume_id, resume_url , sha256_hash, phone_numbers, emails, name, job_offer_id)
+
+
                 print("saved :", resume_url)
 
                 
@@ -180,6 +182,73 @@ async def upload_resumes_hr(job_offer_id: int, files: List[UploadFile] = File(..
 
     return {"urls": urls}
 
+
+@app.post("/upload-resumes-hr")
+async def upload_resumes_hr(files: List[UploadFile] = File(...)):
+    # Validate all files first
+    invalid_files = []
+    
+    for file in files:
+        if not file.filename.lower().endswith(SUPORTED_FORMATS):
+            invalid_files.append(file.filename)
+
+    if invalid_files:
+        raise HTTPException(400, 
+            f"Invalid files: {', '.join(invalid_files)}. All files must be PDFs")
+
+    # Create directory and save file
+    urls = []
+
+    # Generate Path Name
+    for file in files:
+        year = datetime.now().year
+        unique_id = uuid.uuid4().hex
+        dir_path = Path(f"static/resumes/{year}-{unique_id}")
+    
+
+        sha256_hash = ""
+
+        try:
+            contents = await file.read()
+            sha256_hash = hashlib.sha256(contents).hexdigest()
+
+            # if file_hash_esxist(db, sha256_hash, job_offer_id):
+            #     print("file ", file , "is duplicated")
+            #     continue
+
+            dir_path.mkdir(parents=True, exist_ok=True)
+            file_path = dir_path / file.filename
+
+
+            with open(file_path, "wb") as f:
+                f.write(contents)
+            urls.append(f"{SERVER_URL}/static/resumes/{year}-{unique_id}/{file.filename}")
+
+            try:
+                resume_id = f"{year}-{unique_id}"
+                resume_url = f"{SERVER_URL}/static/resumes/{year}-{unique_id}/{file.filename}"
+                #insert_resumes_db(file_path, resume_id, resume_url, job_offer_id)
+
+                resume_txt = read_formated_file(file_path)
+                contact_info = extract_contact_info(resume_txt)
+
+                phone_numbers = contact_info["phone_numbers"]
+                emails = contact_info["emails"]
+                name = extract_names(nlp_model, resume_txt)
+
+                insert_resumes_db(db, resume_id, resume_url , sha256_hash, phone_numbers, emails, name)
+
+
+                print("saved :", resume_url)
+
+                
+            except Exception as e:
+                print(f"Error: {e}")
+
+        except Exception as e:
+            raise HTTPException(500, f"Error saving {file.filename}: {str(e)}")
+
+    return {"urls": urls}
 
 @app.get("/recommendation/{job_offer_id}")
 async def get_recommendation(job_offer_id: int, from_all_resumes : bool = False):
