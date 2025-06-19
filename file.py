@@ -16,7 +16,7 @@ import spacy
 from datetime import datetime
 
 from helper import read_dict_from_json
-from helper import get_keywords, get_joboffer,insert_resumes_db, file_hash_esxist ,read_formated_file, extract_contact_info, get_resumes
+from helper import get_keywords, get_joboffer,insert_resumes_db, file_hash_esxist ,read_formated_file, extract_contact_info, get_resumes, get_all_resumes
 from helper import process_resume, calculate_keyword_score
 from name import extract_names
 
@@ -182,18 +182,27 @@ async def upload_resumes_hr(job_offer_id: int, files: List[UploadFile] = File(..
 
 
 @app.get("/recommendation/{job_offer_id}")
-async def get_recommendation(job_offer_id: int):
+async def get_recommendation(job_offer_id: int, from_all_resumes : bool = False):
 
     RESUMES_PATH = "static/resumes"
     # Read inputs
-    #job_description = read_text_file('job_offer.txt')
     job_description = get_joboffer(db, job_offer_id)
     keywords = get_keywords(db, job_offer_id)
     
     # Get job embedding
     job_embedding = model.encode(job_description, convert_to_tensor=True)
 
-    resume_directories = get_resumes(db, job_offer_id)
+    if from_all_resumes:
+        all_resumes = get_all_resumes(db)   
+        resume_directories = []
+        for element in all_resumes:
+            resume_directories.append([element[1]])
+
+        print("resume_directories",resume_directories)
+    else:
+        resume_directories = get_resumes(db, job_offer_id)
+        print("resume_directories",resume_directories)
+
 
     resume_scores = {}
 
@@ -202,32 +211,36 @@ async def get_recommendation(job_offer_id: int):
 
     # Process resumes
     for dir in resume_directories:
-        for filename in os.listdir( RESUMES_PATH + '/' + str(dir[0])):
+        try: 
+            for filename in os.listdir( RESUMES_PATH + '/' + str(dir[0])):
 
-            filename = RESUMES_PATH + '/' + str(dir[0]) + "/" + filename
-            if filename.endswith(('.pdf', '.docx')):
-                file_path = filename
-                chunks, full_text = process_resume(model ,file_path)
-                # if not chunks:
-                #     continue
-                
-                # Semantic similarity score
-                # chunk_embeddings = model.encode(chunks, convert_to_tensor=True)
-                chunk_embeddings = chunks
-                similarities = util.cos_sim(job_embedding, chunk_embeddings)[0]
-                semantic_score = max(similarities).item()
-                
-                # Keyword matching score
-                keyword_score = calculate_keyword_score(full_text, keywords)
-                
-                # Combined score
-                combined_score = (SEMANTIC_WEIGHT * semantic_score) + (KEYWORD_WEIGHT * keyword_score)
-                
-                resume_scores[str(dir[0])] = {
-                    'combined': combined_score,
-                    'semantic': semantic_score,
-                    'keywords': keyword_score
-                }
+                full_filename = RESUMES_PATH + '/' + str(dir[0]) + "/" + filename
+                if full_filename.endswith(('.pdf', '.docx')):
+                    file_path = full_filename
+                    chunks, full_text = process_resume(model ,file_path)
+                    # if not chunks:
+                    #     continue
+                    
+                    # Semantic similarity score
+                    # chunk_embeddings = model.encode(chunks, convert_to_tensor=True)
+                    chunk_embeddings = chunks
+                    similarities = util.cos_sim(job_embedding, chunk_embeddings)[0]
+                    semantic_score = max(similarities).item()
+                    
+                    # Keyword matching score
+                    keyword_score = calculate_keyword_score(full_text, keywords)
+                    
+                    # Combined score
+                    combined_score = (SEMANTIC_WEIGHT * semantic_score) + (KEYWORD_WEIGHT * keyword_score)
+                    
+                    resume_scores[str(dir[0])] = {
+                        'combined': combined_score,
+                        'semantic': semantic_score,
+                        'keywords': keyword_score
+                    }
+        except Exception as e:
+            print(e)
+            continue # Catches any other unhandled exceptions
 
     # Rank resumes
     ranked_resumes = sorted(resume_scores.items(), 
@@ -244,7 +257,6 @@ async def get_recommendation(job_offer_id: int):
 
 
     return ranked_resumes
-
 
 
 @app.post("/grading")

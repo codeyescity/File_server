@@ -35,12 +35,10 @@ def get_keywords(db: PostgreSQLWrapper, jobOfferId ):
     """
 
     res = db.fetch_all(select_joboffer_query, (jobOfferId,))
-    print(res)
 
     for element in res:
         Skills.append(element[1])
 
-    print(Skills)
 
     return Skills
 
@@ -58,7 +56,6 @@ def get_joboffer(db: PostgreSQLWrapper, jobOfferId ):
 
     res = db.fetch_one(select_joboffer, (jobOfferId,))
 
-    print(res[2])
 
     return res[2]
 
@@ -75,6 +72,19 @@ def get_resumes(db: PostgreSQLWrapper, jobOfferId):
     """
 
     res = db.fetch_all(select_resumes_query, (jobOfferId,))
+
+    return res
+
+def get_all_resumes(db: PostgreSQLWrapper):
+
+
+    select_resumes_query = """
+    SELECT DISTINCT  "cvhash",  "cvId"
+    FROM public."User"
+    WHERE "User"."role" = 'user'
+    """
+
+    res = db.fetch_all(select_resumes_query)
 
     return res
 
@@ -115,7 +125,6 @@ def read_pdf(file_path):
         for page in pdf.pages:
             all_text += page.extract_text()
         
-        print(all_text)
         return all_text
 
 def read_docx(file_path):
@@ -294,8 +303,6 @@ def insert_resumes_db(db: PostgreSQLWrapper, cvId, cvUrl, sha256_hash, phone_num
     ))
 
     user_id = result[0]
-    print(user_id)
-    print(jobOfferId)
 
     # If jobOfferId is provided, create a job application
     if jobOfferId:
