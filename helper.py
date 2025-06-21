@@ -327,22 +327,38 @@ def insert_resumes_db(db: PostgreSQLWrapper, cvId, cvUrl, sha256_hash, phone_num
 
 
 
-def file_hash_esxist(db: PostgreSQLWrapper, file_hash, jobOfferId) -> bool:
+def file_hash_esxist(db: PostgreSQLWrapper, file_hash, jobOfferId = None) -> bool:
 
 
-    select_file_hash_query = """
-    SELECT  "cvhash"
-    FROM public."User"
-    LEFT JOIN public."JobApplication" ON  "User"."UserId" = "JobApplication"."userId"
-    WHERE "User"."role" = 'user'
-    AND "User"."cvhash" = %s
-    AND "JobApplication"."jobOfferId" = %s
-    """
+    if jobOfferId:
+        select_file_hash_query = """
+        SELECT  "cvhash"
+        FROM public."User"
+        LEFT JOIN public."JobApplication" ON  "User"."UserId" = "JobApplication"."userId"
+        WHERE "User"."role" = 'user'
+        AND "User"."cvhash" = %s
+        AND "JobApplication"."jobOfferId" = %s
+        """
 
-    res = db.fetch_all(select_file_hash_query, (file_hash, jobOfferId))
+        res = db.fetch_all(select_file_hash_query, (file_hash, jobOfferId))
 
-    for row in res:
-        if file_hash == row[0]:
-            return True
+        for row in res:
+            if file_hash == row[0]:
+                return True
+
+    else:
+        select_file_hash_query = """
+        SELECT  "cvhash"
+        FROM public."User"
+        LEFT JOIN public."JobApplication" ON  "User"."UserId" = "JobApplication"."userId"
+        WHERE "User"."role" = 'user'
+        AND "User"."cvhash" = %s
+        """
+
+        res = db.fetch_all(select_file_hash_query, (file_hash,))
+
+        for row in res:
+            if file_hash == row[0]:
+                return True
 
     return False

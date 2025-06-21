@@ -212,9 +212,9 @@ async def upload_resumes_hr(files: List[UploadFile] = File(...)):
             contents = await file.read()
             sha256_hash = hashlib.sha256(contents).hexdigest()
 
-            # if file_hash_esxist(db, sha256_hash, job_offer_id):
-            #     print("file ", file , "is duplicated")
-            #     continue
+            if file_hash_esxist(db, sha256_hash):
+                print("file ", file , "is duplicated")
+                continue
 
             dir_path.mkdir(parents=True, exist_ok=True)
             file_path = dir_path / file.filename
