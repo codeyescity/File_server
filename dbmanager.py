@@ -1,82 +1,120 @@
+# import psycopg2
+# from psycopg2.extras import DictCursor
+
+# class PostgreSQLWrapper:
+#     def __init__(self, dbname, user, password, host='localhost', port=5432):
+#         self.connection = psycopg2.connect(
+#             dbname=dbname,
+#             user=user,
+#             password=password,
+#             host=host,
+#             port=port
+#         )
+#         self.cursor = self.connection.cursor(cursor_factory=DictCursor)
+#         print("Connected to the database !")
+
+#     def execute_query(self, query, params=None, return_id=False):
+#         try:
+#             # if return_id:
+#             #     if not query.strip().upper().endswith("RETURNING ID"):
+#             #         query += " RETURNING id"
+#             self.cursor.execute(query, params)
+#             self.connection.commit()
+#             # if return_id:
+#             #     result = self.cursor.fetchone()
+#             #     return result['id'] if result else None
+#             result = self.cursor.fetchone()
+#             return result
+#         except Exception as e:
+#             self.connection.rollback()
+#             raise e
+
+#     def delete_query(self, query, params=None):
+#         try:
+#             # if return_id:
+#             #     if not query.strip().upper().endswith("RETURNING ID"):
+#             #         query += " RETURNING id"
+#             self.cursor.execute(query, params)
+#             self.connection.commit()
+#             # if return_id:
+#             #     result = self.cursor.fetchone()
+#             #     return result['id'] if result else None
+#         except Exception as e:
+#             self.connection.rollback()
+#             raise e
+        
+#     def fetch_all(self, query, params=None):
+#         self.cursor.execute(query, params)
+#         return self.cursor.fetchall()
+
+#     def fetch_one(self, query, params=None):
+#         self.cursor.execute(query, params)
+#         return self.cursor.fetchone()
+
+#     def close(self):
+#         self.cursor.close()
+#         self.connection.close()
+
+
+
 import psycopg2
+from psycopg2 import pool
 from psycopg2.extras import DictCursor
+from contextlib import contextmanager
 
 class PostgreSQLWrapper:
-    def __init__(self, dbname, user, password, host='localhost', port=5432):
-        self.connection = psycopg2.connect(
+    def __init__(self, dbname, user, password, host='localhost', port=5432, minconn=1, maxconn=20):
+        self.connection_pool = psycopg2.pool.ThreadedConnectionPool(
+            minconn, maxconn,
             dbname=dbname,
             user=user,
             password=password,
             host=host,
             port=port
         )
-        self.cursor = self.connection.cursor(cursor_factory=DictCursor)
-        print("Connected to the database !")
+        print("Connected to the database with connection pool!")
 
-    def execute_query(self, query, params=None, return_id=False):
+    @contextmanager
+    def get_db_connection(self):
+        """Context manager for getting database connections from the pool"""
+        connection = None
         try:
-            # if return_id:
-            #     if not query.strip().upper().endswith("RETURNING ID"):
-            #         query += " RETURNING id"
-            self.cursor.execute(query, params)
-            self.connection.commit()
-            # if return_id:
-            #     result = self.cursor.fetchone()
-            #     return result['id'] if result else None
-            result = self.cursor.fetchone()
-            return result
+            connection = self.connection_pool.getconn()
+            yield connection
         except Exception as e:
-            self.connection.rollback()
+            if connection:
+                connection.rollback()
             raise e
+        finally:
+            if connection:
+                self.connection_pool.putconn(connection)
+
+    def execute_query(self, query, params=None):
+        with self.get_db_connection() as conn:
+            with conn.cursor(cursor_factory=DictCursor) as cursor:
+                cursor.execute(query, params)
+                conn.commit()
+                return cursor.fetchone()
 
     def delete_query(self, query, params=None):
-        try:
-            # if return_id:
-            #     if not query.strip().upper().endswith("RETURNING ID"):
-            #         query += " RETURNING id"
-            self.cursor.execute(query, params)
-            self.connection.commit()
-            # if return_id:
-            #     result = self.cursor.fetchone()
-            #     return result['id'] if result else None
-        except Exception as e:
-            self.connection.rollback()
-            raise e
+        with self.get_db_connection() as conn:
+            with conn.cursor(cursor_factory=DictCursor) as cursor:
+                cursor.execute(query, params)
+                conn.commit()
         
     def fetch_all(self, query, params=None):
-        self.cursor.execute(query, params)
-        return self.cursor.fetchall()
+        with self.get_db_connection() as conn:
+            with conn.cursor(cursor_factory=DictCursor) as cursor:
+                cursor.execute(query, params)
+                return cursor.fetchall()
 
     def fetch_one(self, query, params=None):
-        self.cursor.execute(query, params)
-        return self.cursor.fetchone()
+        with self.get_db_connection() as conn:
+            with conn.cursor(cursor_factory=DictCursor) as cursor:
+                cursor.execute(query, params)
+                return cursor.fetchone()
 
     def close(self):
-        self.cursor.close()
-        self.connection.close()
-
-# Example usage
-if __name__ == "__main__":
-    # Initialize the database connection
-    db = PostgreSQLWrapper(dbname='test', user='postgres', password='root')
-
-    # # Example: Insert data
-    # insert_query = "INSERT INTO your_table (column1, column2) VALUES (%s, %s)"
-    # db.execute_query(insert_query, ('value1', 'value2'))
-
-    # Example: Fetch all data
-    select_query = """SELECT * FROM "User" """
-    rows = db.fetch_all(select_query)
-    for row in rows:
-        print(row)
-
-    # Example: Update data
-    # update_query = "UPDATE your_table SET column1 = %s WHERE column2 = %s"
-    # db.execute_query(update_query, ('new_value', 'value2'))
-
-    # # Example: Delete data
-    # delete_query = "DELETE FROM your_table WHERE column1 = %s"
-    # db.execute_query(delete_query, ('new_value',))
-
-    # Close the connection
-    db.close()
+        if self.connection_pool:
+            self.connection_pool.closeall()
+            print("All connections closed")
